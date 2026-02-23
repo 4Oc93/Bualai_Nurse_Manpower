@@ -1,6 +1,6 @@
 import streamlit as st
 import pandas as pd
-from datetime import datetime, date
+from datetime import datetime, timedelta, timezone
 import os
 
 # ---------------------------------------------------------
@@ -27,8 +27,14 @@ st.markdown("""
 """, unsafe_allow_html=True)
 
 # ---------------------------------------------------------
-# 3. ฟังก์ชันโหลดข้อมูล (Data Loading)
+# 3. ฟังก์ชันโหลดข้อมูลและจัดการเวลา (Data & Time Loading)
 # ---------------------------------------------------------
+# ตั้งค่าโซนเวลาประเทศไทย (UTC+7) ป้องกันปัญหาวันที่เพี้ยนบน Cloud
+tz_th = timezone(timedelta(hours=7))
+
+def get_today_th():
+    return datetime.now(tz_th).date()
+
 @st.cache_data(ttl=600) # รีเฟรชข้อมูลใหม่อัตโนมัติทุกๆ 10 นาที
 def load_data():
     try:
@@ -62,14 +68,23 @@ df_trans, df_plan, df_cal = load_data()
 # ---------------------------------------------------------
 # 4. แถบควบคุมด้านซ้าย (Sidebar & Authentication)
 # ---------------------------------------------------------
+
+# ตั้งค่าให้หน้าเว็บโหลดมาเป็น "วันนี้" เสมอ
+if 'selected_date' not in st.session_state:
+    st.session_state['selected_date'] = get_today_th()
+
+# ฟังก์ชันสำหรับผูกกับปุ่ม Today
+def set_to_today():
+    st.session_state['selected_date'] = get_today_th()
+
 with st.sidebar:
     st.header("เลือกวันที่") 
     
-    if st.button("วันนี้ (Today)", use_container_width=True):
-        st.session_state['selected_date'] = date.today()
+    # กดปุ่มแล้วจะเรียกใช้ฟังก์ชัน set_to_today ให้ปรับเป็นวันนี้ทันที
+    st.button("วันนี้ (Today)", on_click=set_to_today, use_container_width=True)
         
-    default_date = st.session_state.get('selected_date', date.today())
-    selected_date = st.date_input("เลือกวันที่เพื่อดูข้อมูล:", value=default_date)
+    # ใช้ key='selected_date' เพื่อให้ Streamlit จำค่าเชื่อมกับปุ่มด้านบน
+    selected_date = st.date_input("เลือกวันที่เพื่อดูข้อมูล:", key='selected_date')
     
     st.markdown("---")
     
